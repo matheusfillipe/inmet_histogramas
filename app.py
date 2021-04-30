@@ -10,6 +10,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 import plotly.express as px
+import SessionState
 
 zips = [name for name in glob.glob(r"data/[0-9][0-9][0-9][0-9].zip")]
 if len(zips) < 1:
@@ -68,27 +69,25 @@ def display(search):
 
 
     years, dfs = getData()
-    year = st.selectbox("Ano: ", years)
+    left_column, right_column = st.beta_columns(2)
+    with left_column:
+        year = st.selectbox("Ano: ", years)
+
     if year in years:
         i = years.index(year)
         df = dfs[i]
-        #st.write(df)
-        #st.write(df[column].groupby(df["time"].dt.to_period("M")).sum())
 
-        # st.subheader(year)
-        # hist_values = np.histogram(
-        #     df['time'].dt.month, bins=12, range=(1,12))[0]
-        # st.bar_chart(hist_values)
+        with right_column:
+            daily = st.selectbox("Modo", ["monthly", "daily"]) == "daily"
+            if daily:
+                s = df.groupby(pd.Grouper(freq="d", key="time"))[column].sum()
+            else:
+                s = df.groupby(pd.Grouper(freq="M", key="time"))[column].sum()
 
         a = df.groupby(pd.Grouper(freq="Y", key="time"))[column].sum().to_frame()
-        a = a.rename(columns={column: "Precipitação Total Anual(mm)"})
-        st.write(a)
+        total_label="Precipitação Total Anual(mm)"
+        a = a.rename(columns={column: total_label})
 
-
-        if st.selectbox("Modo", ["monthly", "daily"]) == "daily":
-            s = df.groupby(pd.Grouper(freq="d", key="time"))[column].sum()
-        else:
-            s = df.groupby(pd.Grouper(freq="M", key="time"))[column].sum()
         time = []
         data = []
         for k,v in s.items():
@@ -97,19 +96,26 @@ def display(search):
         df = pd.DataFrame()
         df['Data'] = time
         df["Precipitação mm"] = data
-        #st.write(df)
+
         fig = px.histogram(df, x='Data', y="Precipitação mm", labels={'x': "Data", 'y': "mm"}, nbins=len(df['Data']))
+        fig.update_layout(width=900,height=450)
+        "* * *"
+
+
+        desc = f"### {search.upper().replace('_', ' ')} - {year}"
+        st.markdown(desc)
+        hold = st.button("Keep")
+
+        st.write(a)
+        avg = round(a[total_label][0]/len(df['Data']), 3)
+        if not daily:
+            avg_lbl=f"**Média mensal no ano:** {avg} mm"
+        else:
+            avg_lbl=f"**Média diária no ano:** {avg} mm"
         st.plotly_chart(fig)
-        return fig, a
 
-        # fig = ff.create_distplot(hist_data, group_labels, bin_size=[.1, .25, .5])
-        # group_labels = ['Group 1', 'Group 2', 'Group 3']
-        # hist_data = [
-        #     np.random.randn(200) - 2,
-        #     np.random.randn(200),
-        #     np.random.randn(200) + 2
-        # ]
 
+        return hold, fig, a, desc, avg_lbl
 
 
 
@@ -120,8 +126,28 @@ st.set_page_config(  # Alternate names: setup_page, page, layout
 	page_title=None,  # String or None. Strings get appended with "• Streamlit". 
 	page_icon=None,  # String, anything supported by st.image, or None.
 )
+
+with open("style.css") as f:
+    st.markdown('<style>{}</style>'.format(f.read()), unsafe_allow_html=True)
+session_state = SessionState.get(plots=[])
 st.title("Precipitação Mensal")
 "**Mapa das estações:** https://mapas.inmet.gov.br"
 search = st.selectbox("Estação", [Path(name).stem for name in list_zips()])
-fig, a = display(search)
+
+hold, fig, a, desc, lbl = display(search)
+if hold:
+    session_state.plots.append((fig, a, desc, lbl))
+
+if len(session_state.plots) > 0 and st.button('clear'):
+    session_state.plots = []
+
+for fig, a, desc, lbl in session_state.plots:
+    st.markdown(desc)
+    st.write(a)
+    st.markdown(lbl)
+    st.plotly_chart(fig)
+
+
+
+"* * *"
 components.iframe("https://mapas.inmet.gov.br/", height=700)
