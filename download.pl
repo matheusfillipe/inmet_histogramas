@@ -28,7 +28,7 @@ sub getfiles {
   for my $year ($from..$to){
     print("Downloading: ".$year."\n");
     my $filename = $BASE_URL.$year.".zip";
-    print `cd data; rm $filename; wget $filename`;
+    print `cd data; rm $year.zip; wget $filename`;
   }
 }
 
