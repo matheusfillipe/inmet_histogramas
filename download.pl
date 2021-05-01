@@ -36,7 +36,7 @@ sub getfiles {
 unless (caller) {
   my $date = getdate;
   print $date;
-  my ($from, $to) = @ARGV >= 2 ? @ARGV : (2015, $date);
+  my ($from, $to) = @ARGV >= 2 ? @ARGV : (2000, $date);
   getfiles $from, $to;
   my $month = getmonth();
   `echo "$month" > data/lastmonth`;

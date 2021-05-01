@@ -106,12 +106,14 @@ def display(search):
         st.markdown(desc)
         hold = st.button("Keep")
 
-        st.write(a)
         avg = round(a[total_label][0]/len(df['Data']), 3)
         if not daily:
             avg_lbl=f"**Média mensal no ano:** {avg} mm"
         else:
             avg_lbl=f"**Média diária no ano:** {avg} mm"
+        st.markdown(avg_lbl)
+        st.write(a)
+
         st.plotly_chart(fig)
 
 
@@ -135,6 +137,7 @@ st.title("Precipitação Mensal")
 search = st.selectbox("Estação", [Path(name).stem for name in list_zips()])
 
 hold, fig, a, desc, lbl = display(search)
+
 if hold:
     session_state.plots.append((fig, a, desc, lbl))
 
